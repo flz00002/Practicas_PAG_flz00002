@@ -47,12 +47,22 @@ void mouse_button_callback ( GLFWwindow *window, int button, int action, int mod
     }
 }
 
+float bgRed=0.6f, bgGreen=0.6f, bgBlue=0.6f;
 // - Esta función callback será llamada cada vez que se mueva la rueda
 // del ratón sobre el área de dibujo OpenGL.
 void scroll_callback ( GLFWwindow *window, double xoffset, double yoffset ){
-    std::cout << "Movida la rueda del ratón " << xoffset
-    << " Unidades en horizontal y " << yoffset
-    << " unidades en vertical" << std::endl;
+    float paso=0.05f;
+    if (yoffset > 0) {
+        bgRed=std::min ( 1.0f,bgRed+paso );
+        bgGreen=std::min ( 1.0f,bgGreen+paso );
+        bgBlue=std::min ( 1.0f,bgBlue+paso );
+    }else if (yoffset < 0) {
+        bgRed=std::max ( 0.0f,bgRed-paso );
+        bgGreen=std::max ( 0.0f,bgGreen-paso );
+        bgBlue=std::max ( 0.0f,bgBlue-paso );
+    }
+    glClearColor ( bgRed, bgGreen, bgBlue, 1.0f );
+    std::cout << "Color de fondo RGB: (" << bgRed << ", " << bgGreen << ", " << bgBlue << ")" << std::endl;
 }
 
 int main(){
@@ -110,7 +120,7 @@ int main(){
 
     // - Establecemos un gris medio como color con el que se borrará el frame buffer.
     // No tiene por qué ejecutarse en cada paso por el ciclo de eventos.
-    glClearColor ( 0.6, 0.6, 0.6, 1.0 );
+    glClearColor ( bgRed, bgGreen, bgBlue, 1.0 );
     // - Le decimos a OpenGL que tenga en cuenta la profundidad a la hora de dibujar.
     // No tiene por qué ejecutarse en cada paso por el ciclo de eventos.
     glEnable ( GL_DEPTH_TEST );
