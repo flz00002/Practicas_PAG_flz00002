@@ -59,7 +59,6 @@ namespace PAG
 
     void Renderer::colorear () {
         glClearColor(bgRed,bgGreen,bgBlue,1.0f);
-        std::cout << "Color de fondo RGB: (" << bgRed << ", " << bgGreen << ", " << bgBlue << ")" << std::endl;
     }
 
     void Renderer::activarTestProfundidad() {
