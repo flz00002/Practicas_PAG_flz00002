@@ -190,6 +190,28 @@ int main(){
         // Si la ventana no está desplegada, Begin devuelve false
         ImGui::End ();
 
+        ImGui::SetNextWindowPos(ImVec2(430, 10), ImGuiCond_Once);
+        ImGui::SetNextWindowSize(ImVec2(320, 340), ImGuiCond_Once);
+        if (ImGui::Begin("Fondo")) {
+            ImGui::SetWindowFontScale(1.0f);
+
+            // Obtener el color de fondo actual del Renderer
+            float colorFondo[3] = {
+                PAG::Renderer::getInstancia().getbgRed(),
+                PAG::Renderer::getInstancia().getbgGreen(),
+                PAG::Renderer::getInstancia().getbgBlue()
+            };
+
+            // Control de Rueda/Paleta de Color de ImGui
+            if (ImGui::ColorPicker3("##picker", colorFondo)) {
+                PAG::Renderer::getInstancia().setbgRed(colorFondo[0]);
+                PAG::Renderer::getInstancia().setbgGreen(colorFondo[1]);
+                PAG::Renderer::getInstancia().setbgBlue(colorFondo[2]);
+                PAG::Renderer::getInstancia().colorear();
+            }
+        }
+        ImGui::End();
+
         // - Borra los buffers (color y profundidad)
         PAG::Renderer::getInstancia().refrescar();
 
