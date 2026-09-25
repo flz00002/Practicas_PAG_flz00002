@@ -9,7 +9,9 @@ file( GLOB MY_FILES *.cpp ) # Código fuente de tu proyecto
 
 
 add_executable(${PROJECT_NAME} ${MY_FILES}
-                               ${GLAD_FILES})
+                               ${GLAD_FILES}
+                                main.cpp
+                                Renderer.cpp)
 
 find_package(OpenGL REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
