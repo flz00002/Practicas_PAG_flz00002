@@ -35,9 +35,9 @@ namespace PAG
         float getbgRed ();
         float getbgGreen ();
         float getbgBlue ();
-        float setbgRed (float bgRed);
-        float setbgGreen (float bgGreen);
-        float setbgBlue (float bgBlue);
+        void setbgRed (float bgRed);
+        void setbgGreen (float bgGreen);
+        void setbgBlue (float bgBlue);
 
         void activarTestProfundidad();
 

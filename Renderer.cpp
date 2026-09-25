@@ -47,13 +47,13 @@ namespace PAG
         return bgBlue;
     }
 
-    float Renderer::setbgRed (float bgRed) {
+    void Renderer::setbgRed (float bgRed) {
         this->bgRed = bgRed;
     }
-    float Renderer::setbgGreen (float bgGreen) {
+    void Renderer::setbgGreen (float bgGreen) {
         this->bgGreen = bgGreen;
     }
-    float Renderer::setbgBlue (float bgBlue) {
+    void Renderer::setbgBlue (float bgBlue) {
         this->bgBlue = bgBlue;
     }
 

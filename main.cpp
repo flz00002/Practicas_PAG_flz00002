@@ -52,15 +52,19 @@ void mouse_button_callback ( GLFWwindow *window, int button, int action, int mod
 // del ratón sobre el área de dibujo OpenGL.
 void scroll_callback ( GLFWwindow *window, double xoffset, double yoffset ){
     float paso=0.05f;
+    float auxR=0.6f, auxG=0.6f, auxB=0.6f;
     if (yoffset > 0) {
-        PAG::Renderer::getInstancia().setbgRed(std::min ( 1.0f,PAG::Renderer::getInstancia().getbgRed()+paso));
-        PAG::Renderer::getInstancia().setbgGreen(std::min ( 1.0f,PAG::Renderer::getInstancia().getbgGreen()+paso));
-        PAG::Renderer::getInstancia().setbgBlue(std::min ( 1.0f,PAG::Renderer::getInstancia().getbgBlue()+paso));
+        auxR=std::min ( 1.0f,PAG::Renderer::getInstancia().getbgRed()+paso);
+        auxG=std::min ( 1.0f,PAG::Renderer::getInstancia().getbgGreen()+paso);
+        auxB=std::min ( 1.0f,PAG::Renderer::getInstancia().getbgBlue()+paso);
     }else if (yoffset < 0) {
-        PAG::Renderer::getInstancia().setbgRed(std::max(0.0f,PAG::Renderer::getInstancia().getbgRed()-paso));
-        PAG::Renderer::getInstancia().setbgGreen(std::max(0.0f,PAG::Renderer::getInstancia().getbgGreen()-paso));
-        PAG::Renderer::getInstancia().setbgBlue(std::max(0.0f,PAG::Renderer::getInstancia().getbgBlue()-paso));
+        auxR=std::max(0.0f,PAG::Renderer::getInstancia().getbgRed()-paso);
+        auxG=std::max(0.0f,PAG::Renderer::getInstancia().getbgGreen()-paso);
+        auxB=std::max(0.0f,PAG::Renderer::getInstancia().getbgBlue()-paso);
     }
+    PAG::Renderer::getInstancia().setbgRed(auxR);
+    PAG::Renderer::getInstancia().setbgGreen(auxG);
+    PAG::Renderer::getInstancia().setbgBlue(auxB);
     PAG::Renderer::getInstancia().colorear();
 }
 
