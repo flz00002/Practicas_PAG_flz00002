@@ -26,6 +26,13 @@ namespace PAG
         static Renderer* instancia; ///< Puntero al único objeto
         Renderer ();
         float bgRed=0.6f, bgGreen=0.6f, bgBlue=0.6f;
+
+        GLuint idVS = 0; // Identificador del vertex shader
+        GLuint idFS = 0; // Identificador del fragment shader
+        GLuint idSP = 0; // Identificador del shader program
+        GLuint idVAO = 0; // Identificador del vertex array object
+        GLuint idVBO = 0; // Identificador del vertex buffer object
+        GLuint idIBO = 0; // Identificador del index buffer object
     public:
         virtual ~Renderer ();
         static Renderer& getInstancia ();
@@ -42,6 +49,10 @@ namespace PAG
         void activarTestProfundidad();
 
         void informePropiedades();
+
+        void creaShaderProgram();
+
+        void creaModelo();
     };
 }
 
