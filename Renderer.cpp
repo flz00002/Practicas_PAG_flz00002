@@ -1,7 +1,10 @@
+#include "glad/glad.h"
 #include <GL/gl.h>
 #include "Renderer.h"
 #include <iostream>
-#include "glad/glad.h"
+#include <fstream>
+#include <sstream>
+
 namespace PAG
 {
     Renderer* Renderer::instancia = nullptr;
@@ -12,7 +15,26 @@ namespace PAG
     /**
     * Destructor
     */
-    Renderer::~Renderer (){ }
+    Renderer::~Renderer () {
+        if ( idVS != 0 )
+        { glDeleteShader ( idVS );
+        }
+        if ( idFS != 0 )
+        { glDeleteShader ( idFS );
+        }
+        if ( idSP != 0 )
+        { glDeleteProgram ( idSP );
+        }
+        if ( idVBO != 0 )
+        { glDeleteBuffers ( 1, &idVBO );
+        }
+        if ( idIBO != 0 )
+        { glDeleteBuffers ( 1, &idIBO );
+        }
+        if ( idVAO != 0 )
+        { glDeleteVertexArrays ( 1, &idVAO );
+        }
+    }
     /**
     * Consulta del objeto único de la clase
     * @return La dirección de memoria del objeto
@@ -24,11 +46,27 @@ namespace PAG
     }
         return *instancia;
     }
+
+    std::string Renderer::cargarArchivoTexto(const std::string& ruta) {
+        std::ifstream archivo(ruta);
+        if (!archivo.is_open()) {
+            throw std::runtime_error("No se pudo abrir el archivo de shader: " + ruta);
+        }
+        std::stringstream buffer;
+        buffer << archivo.rdbuf();
+        return buffer.str();
+    }
+
     /**
     * Método para hacer el refresco de la escena
     */
-    void Renderer::refrescar ()
-    { glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    void Renderer::refrescar (){
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glPolygonMode ( GL_FRONT_AND_BACK, GL_FILL );
+        glUseProgram ( idSP );
+        glBindVertexArray ( idVAO );
+        glBindBuffer ( GL_ELEMENT_ARRAY_BUFFER, idIBO );
+        glDrawElements ( GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr );
     }
 
     void Renderer::setViewport (int width, int height) {
@@ -36,29 +74,29 @@ namespace PAG
     }
 
     float Renderer::getbgRed() {
-        return bgRed;
+        return _colorBorrado[0];
     }
 
     float Renderer::getbgGreen() {
-        return bgGreen;
+        return _colorBorrado[1];
     }
 
     float Renderer::getbgBlue() {
-        return bgBlue;
+        return _colorBorrado[2];
     }
 
     void Renderer::setbgRed (float bgRed) {
-        this->bgRed = bgRed;
+        _colorBorrado[0] = bgRed;
     }
     void Renderer::setbgGreen (float bgGreen) {
-        this->bgGreen = bgGreen;
+        _colorBorrado[1] = bgGreen;
     }
     void Renderer::setbgBlue (float bgBlue) {
-        this->bgBlue = bgBlue;
+        _colorBorrado[2] = bgBlue;
     }
 
     void Renderer::colorear () {
-        glClearColor(bgRed,bgGreen,bgBlue,1.0f);
+        glClearColor(_colorBorrado[0],_colorBorrado[1],_colorBorrado[2],_colorBorrado[3]);
     }
 
     void Renderer::activarTestProfundidad() {
@@ -76,34 +114,48 @@ namespace PAG
     * Método para crear, compilar y enlazar el shader program
     * @note No se incluye ninguna comprobación de errores
     */
-    void PAG::Renderer::creaShaderProgram( ){
-        std::string miVertexShader =
-            "#version 410\n"
-            "layout (location = 0) in vec3 posicion;\n"
-            "void main ()\n"
-            "{ gl_Position = vec4 ( posicion, 1 );\n"
-            "}\n";
-        std::string miFragmentShader =
-            "#version 410\n"
-            "out vec4 colorFragmento;\n"
-            "void main ()\n"
-            "{ colorFragmento = vec4 ( 1.0, .4, .2, 1.0 );\n"
-            "}\n";
+    void PAG::Renderer::creaShaderProgram(const std::string& nombreBase) {
+        std::string rutaVS = nombreBase + "-vs.glsl";
+        std::string rutaFS = nombreBase + "-fs.glsl";
 
-        idVS = glCreateShader ( GL_VERTEX_SHADER );
-        const GLchar* fuenteVS = miVertexShader.c_str ();
-        glShaderSource ( idVS, 1, &fuenteVS, nullptr );
-        glCompileShader ( idVS );
+        std::string codigoVS = cargarArchivoTexto(rutaVS);
+        std::string codigoFS = cargarArchivoTexto(rutaFS);
 
-        idFS = glCreateShader ( GL_FRAGMENT_SHADER );
-        const GLchar* fuenteFS = miFragmentShader.c_str ();
-        glShaderSource ( idFS, 1, &fuenteFS, nullptr );
-        glCompileShader ( idFS );
+        GLint exito = 0;
+        GLchar infoLog[1024];
 
-        idSP = glCreateProgram ();
-        glAttachShader ( idSP, idVS );
-        glAttachShader ( idSP, idFS );
-        glLinkProgram ( idSP );
+        idVS = glCreateShader(GL_VERTEX_SHADER);
+        const GLchar* fuenteVS = codigoVS.c_str();
+        glShaderSource(idVS, 1, &fuenteVS, nullptr);
+        glCompileShader(idVS);
+
+        glGetShaderiv(idVS, GL_COMPILE_STATUS, &exito);
+        if (!exito) {
+            glGetShaderInfoLog(idVS, 1024, nullptr, infoLog);
+            throw std::runtime_error("Error Vertex Shader (" + rutaVS + "):\n" + std::string(infoLog));
+        }
+
+        idFS = glCreateShader(GL_FRAGMENT_SHADER);
+        const GLchar* fuenteFS = codigoFS.c_str();
+        glShaderSource(idFS, 1, &fuenteFS, nullptr);
+        glCompileShader(idFS);
+
+        glGetShaderiv(idFS, GL_COMPILE_STATUS, &exito);
+        if (!exito) {
+            glGetShaderInfoLog(idFS, 1024, nullptr, infoLog);
+            throw std::runtime_error("Error Fragment Shader (" + rutaFS + "):\n" + std::string(infoLog));
+        }
+
+        idSP = glCreateProgram();
+        glAttachShader(idSP, idVS);
+        glAttachShader(idSP, idFS);
+        glLinkProgram(idSP);
+
+        glGetProgramiv(idSP, GL_LINK_STATUS, &exito);
+        if (!exito) {
+            glGetProgramInfoLog(idSP, 1024, nullptr, infoLog);
+            throw std::runtime_error("Error al enlazar el Shader Program:\n" + std::string(infoLog));
+        }
     }
 
     /**
@@ -115,7 +167,7 @@ namespace PAG
                                 .5, -.5, 0,
                                 .0, .5, 0 };
         GLuint indices[] = { 0, 1, 2 };
-        
+
         glGenVertexArrays ( 1, &idVAO );
         glBindVertexArray ( idVAO );
         glGenBuffers ( 1, &idVBO );
@@ -128,6 +180,14 @@ namespace PAG
         glBufferData ( GL_ELEMENT_ARRAY_BUFFER, 3*sizeof(GLuint), indices, GL_STATIC_DRAW );
     }
 
+    /**
+    * Método para inicializar los parámetros globales de OpenGL
+    */
+    void PAG::Renderer::inicializaOpenGL ( ){
+        glClearColor ( _colorBorrado[0], _colorBorrado[1], _colorBorrado[2], _colorBorrado[3] );
+        glEnable ( GL_DEPTH_TEST );
+        glEnable ( GL_MULTISAMPLE );
+    }
 
 
 }

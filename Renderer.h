@@ -5,7 +5,8 @@
 #ifndef PRACTICA_1_PAG_RENDERER_H
 #define PRACTICA_1_PAG_RENDERER_H
 
-
+#include <glad/glad.h>
+#include <iostream>
 
 /**
 * Espacio de nombres para las prácticas de Programación de Aplicaciones Gráficas
@@ -25,7 +26,6 @@ namespace PAG
     private:
         static Renderer* instancia; ///< Puntero al único objeto
         Renderer ();
-        float bgRed=0.6f, bgGreen=0.6f, bgBlue=0.6f;
 
         GLuint idVS = 0; // Identificador del vertex shader
         GLuint idFS = 0; // Identificador del fragment shader
@@ -33,6 +33,8 @@ namespace PAG
         GLuint idVAO = 0; // Identificador del vertex array object
         GLuint idVBO = 0; // Identificador del vertex buffer object
         GLuint idIBO = 0; // Identificador del index buffer object
+
+        float _colorBorrado[4]={0.2f,0.3f,0.3f,1.0f};
     public:
         virtual ~Renderer ();
         static Renderer& getInstancia ();
@@ -50,9 +52,13 @@ namespace PAG
 
         void informePropiedades();
 
-        void creaShaderProgram();
+        void creaShaderProgram(const std::string& nombreBase="pag03");
 
         void creaModelo();
+
+        void inicializaOpenGL();
+
+        std::string cargarArchivoTexto(const std::string& ruta);
     };
 }
 
