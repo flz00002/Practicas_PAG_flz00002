@@ -67,6 +67,8 @@ namespace PAG
         glBindVertexArray ( idVAO );
         glBindBuffer ( GL_ELEMENT_ARRAY_BUFFER, idIBO );
         glDrawElements ( GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr );
+
+        glBindVertexArray(0);
     }
 
     void Renderer::setViewport (int width, int height) {
@@ -156,6 +158,18 @@ namespace PAG
             glGetProgramInfoLog(idSP, 1024, nullptr, infoLog);
             throw std::runtime_error("Error al enlazar el Shader Program:\n" + std::string(infoLog));
         }
+
+        // Eliminamos los objetos shader individuales de la memoria de la GPU
+        glDetachShader(idSP, idVS);
+        glDetachShader(idSP, idFS);
+
+        // Eliminamos los objetos shader individuales de la memoria de la GPU
+        glDeleteShader(idVS);
+        glDeleteShader(idFS);
+
+        // Reseteamos las variables miembro indicando que ya no apuntan a nada
+        idVS = 0;
+        idFS = 0;
     }
 
     /**
@@ -178,6 +192,8 @@ namespace PAG
         glGenBuffers ( 1, &idIBO );
         glBindBuffer ( GL_ELEMENT_ARRAY_BUFFER, idIBO );
         glBufferData ( GL_ELEMENT_ARRAY_BUFFER, 3*sizeof(GLuint), indices, GL_STATIC_DRAW );
+
+        glBindVertexArray ( 0 );
     }
 
     /**

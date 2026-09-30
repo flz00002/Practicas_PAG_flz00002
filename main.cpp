@@ -167,7 +167,13 @@ int main(){
     // ventana principal deba cerrarse. Por ejemplo, si el usuario pulsa el
     // botón de cerrar la ventana (la X).
 
-    PAG::Renderer::getInstancia().creaShaderProgram ();
+    try {
+        PAG::Renderer::getInstancia().creaShaderProgram ();
+        addLog("Shaders 'pag03' cargados y compilados correctamente");
+    }catch (const std::exception& e) {
+        addLog("[ERROR]"+std::string(e.what()));
+    }
+
     PAG::Renderer::getInstancia().creaModelo ();
 
     while ( !glfwWindowShouldClose ( window ) ){
