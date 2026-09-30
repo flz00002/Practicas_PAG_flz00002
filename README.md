@@ -1,4 +1,4 @@
-# Ejercicio de reflexión
+# Ejercicio de reflexión Práctica 1
 La incompatibilidad se debe a que los métodos de clase
 no estáticos en C++ reciben implicitamente el puntero
 "this", por lo que su firma no coincide con las
@@ -34,3 +34,14 @@ El módulo encargado de inicializarlo debe ser main.cpp.
 La instanciación debe realizarse estrictamente después de
 crear la ventana con GLFW y haber cargado el contexto con
 GLAD, pero antes de entrar en el ciclo de eventos.
+
+# Pregunta sobre el triángulo Práctica 3
+### Si redimensionas la ventana de la aplicación, verás que el triángulo no permanece igual, sino que se deforma al mismo tiempo que la ventana. ¿A qué crees que se debe este comportamiento?
+Esto es debido a que los vértices del triángulo están definidos únicamente
+en coordenadas normalizadas en el rango [-1,1], las cuales la GPU estira 
+directamente para adaptar el tamaño del Viewport (glViewport).
+
+Al redimensionar la ventana cambia su relación de aspecto (ancho/alto),
+por lo que el espacio [-1,1] se escala de forma desigual en cada eje. Esto
+sucede porque no se está utilizando una matriz de proyección que compense
+la proporción de la ventana y mantenga la geometría original del objeto.
