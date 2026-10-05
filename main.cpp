@@ -9,9 +9,11 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
-
 // Vector global para almacenar los mensajes de la consola de ImGui
 std::vector<std::string> logMensajes;
+
+// Buffer de caracteres estático para almacenar el nombre del shader en ImGui nativo
+static char nombreShaderBuf[256] = "pag03";
 
 // Función aux para añadir mensajes al log
 void addLog(const std::string& msg) {
@@ -49,6 +51,7 @@ void framebuffer_size_callback ( GLFWwindow *window, int width, int height ){
 // - Esta función callback será llamada cada vez que se pulse una tecla
 // dirigida al área de dibujo OpenGL.
 void key_callback ( GLFWwindow *window, int key, int scancode, int action, int mods ){
+    ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
     if ( key == GLFW_KEY_ESCAPE && action == GLFW_PRESS ){
         glfwSetWindowShouldClose(window, GLFW_TRUE);
 }
@@ -168,7 +171,7 @@ int main(){
     // botón de cerrar la ventana (la X).
 
     try {
-        PAG::Renderer::getInstancia().creaShaderProgram ();
+        PAG::Renderer::getInstancia().creaShaderProgram (nombreShaderBuf);
         addLog("Shaders 'pag03' cargados y compilados correctamente");
     }catch (const std::exception& e) {
         addLog("[ERROR]"+std::string(e.what()));
@@ -218,6 +221,27 @@ int main(){
                 PAG::Renderer::getInstancia().setbgGreen(colorFondo[1]);
                 PAG::Renderer::getInstancia().setbgBlue(colorFondo[2]);
                 PAG::Renderer::getInstancia().colorear();
+            }
+        }
+        ImGui::End();
+
+        // Ventana ImGui para la gestión interactiva de los Shader Programs
+        ImGui::SetNextWindowPos(ImVec2(10, 270), ImGuiCond_Once);
+        ImGui::SetNextWindowSize(ImVec2(400, 120), ImGuiCond_Once);
+        if (ImGui::Begin("Shader Program")) {
+            ImGui::SetWindowFontScale(1.0f);
+
+            // MODIFICADO: Uso de la versión nativa de ImGui::InputText para arrays de char (requiere buffer y tamaño)
+            ImGui::InputText("##nombreBaseShader", nombreShaderBuf, sizeof(nombreShaderBuf), ImGuiInputTextFlags_AutoSelectAll);
+
+            // Botón "Load" para compilar y cargar el shader especificado
+            if (ImGui::Button("Load")) {
+                try {
+                    PAG::Renderer::getInstancia().creaShaderProgram(nombreShaderBuf); // Se envía nombreShaderBuf
+                    addLog("Shader Program '" + std::string(nombreShaderBuf) + "' cargado y compilado correctamente."); // Conversión a string para el log
+                } catch (const std::exception& e) {
+                    addLog("[ERROR EN SHADERS]: " + std::string(e.what()));
+                }
             }
         }
         ImGui::End();
