@@ -16,7 +16,7 @@ namespace PAG
     * Destructor
     */
     Renderer::~Renderer () {
-        if ( idVS != 0 )
+        /*if ( idVS != 0 )
         { glDeleteShader ( idVS );
         }
         if ( idFS != 0 )
@@ -24,7 +24,7 @@ namespace PAG
         }
         if ( idSP != 0 )
         { glDeleteProgram ( idSP );
-        }
+        }*/
         if ( idVBO != 0 )
         { glDeleteBuffers ( 1, &idVBO );
         }
@@ -47,7 +47,7 @@ namespace PAG
         return *instancia;
     }
 
-    std::string Renderer::cargarArchivoTexto(const std::string& ruta) {
+    /*std::string Renderer::cargarArchivoTexto(const std::string& ruta) {
         std::ifstream archivo(ruta);
         if (!archivo.is_open()) {
             throw std::runtime_error("No se pudo abrir el archivo de shader: " + ruta);
@@ -55,7 +55,7 @@ namespace PAG
         std::stringstream buffer;
         buffer << archivo.rdbuf();
         return buffer.str();
-    }
+    }*/
 
     /**
     * Método para hacer el refresco de la escena
@@ -63,7 +63,9 @@ namespace PAG
     void Renderer::refrescar (){
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glPolygonMode ( GL_FRONT_AND_BACK, GL_FILL );
-        glUseProgram ( idSP );
+
+        _shaderProgram.activar();
+
         glBindVertexArray ( idVAO );
         glBindBuffer ( GL_ELEMENT_ARRAY_BUFFER, idIBO );
         glDrawElements ( GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr );
@@ -117,59 +119,7 @@ namespace PAG
     * @note No se incluye ninguna comprobación de errores
     */
     void PAG::Renderer::creaShaderProgram(const std::string& nombreBase) {
-        std::string rutaVS = nombreBase + "-vs.glsl";
-        std::string rutaFS = nombreBase + "-fs.glsl";
-
-        std::string codigoVS = cargarArchivoTexto(rutaVS);
-        std::string codigoFS = cargarArchivoTexto(rutaFS);
-
-        GLint exito = 0;
-        GLchar infoLog[1024];
-
-        idVS = glCreateShader(GL_VERTEX_SHADER);
-        const GLchar* fuenteVS = codigoVS.c_str();
-        glShaderSource(idVS, 1, &fuenteVS, nullptr);
-        glCompileShader(idVS);
-
-        glGetShaderiv(idVS, GL_COMPILE_STATUS, &exito);
-        if (!exito) {
-            glGetShaderInfoLog(idVS, 1024, nullptr, infoLog);
-            throw std::runtime_error("Error Vertex Shader (" + rutaVS + "):\n" + std::string(infoLog));
-        }
-
-        idFS = glCreateShader(GL_FRAGMENT_SHADER);
-        const GLchar* fuenteFS = codigoFS.c_str();
-        glShaderSource(idFS, 1, &fuenteFS, nullptr);
-        glCompileShader(idFS);
-
-        glGetShaderiv(idFS, GL_COMPILE_STATUS, &exito);
-        if (!exito) {
-            glGetShaderInfoLog(idFS, 1024, nullptr, infoLog);
-            throw std::runtime_error("Error Fragment Shader (" + rutaFS + "):\n" + std::string(infoLog));
-        }
-
-        idSP = glCreateProgram();
-        glAttachShader(idSP, idVS);
-        glAttachShader(idSP, idFS);
-        glLinkProgram(idSP);
-
-        glGetProgramiv(idSP, GL_LINK_STATUS, &exito);
-        if (!exito) {
-            glGetProgramInfoLog(idSP, 1024, nullptr, infoLog);
-            throw std::runtime_error("Error al enlazar el Shader Program:\n" + std::string(infoLog));
-        }
-
-        // Eliminamos los objetos shader individuales de la memoria de la GPU
-        glDetachShader(idSP, idVS);
-        glDetachShader(idSP, idFS);
-
-        // Eliminamos los objetos shader individuales de la memoria de la GPU
-        glDeleteShader(idVS);
-        glDeleteShader(idFS);
-
-        // Reseteamos las variables miembro indicando que ya no apuntan a nada
-        idVS = 0;
-        idFS = 0;
+        _shaderProgram.compilarYEnlazar(nombreBase);
     }
 
     /**

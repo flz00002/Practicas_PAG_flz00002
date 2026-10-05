@@ -8,6 +8,8 @@
 #include <glad/glad.h>
 #include <iostream>
 
+#include "ShaderProgram.h"
+
 /**
 * Espacio de nombres para las prácticas de Programación de Aplicaciones Gráficas
 */
@@ -27,9 +29,14 @@ namespace PAG
         static Renderer* instancia; ///< Puntero al único objeto
         Renderer ();
 
+        ShaderProgram _shaderProgram;
+
+        /*
         GLuint idVS = 0; // Identificador del vertex shader
         GLuint idFS = 0; // Identificador del fragment shader
         GLuint idSP = 0; // Identificador del shader program
+        */
+
         GLuint idVAO = 0; // Identificador del vertex array object
         GLuint idVBO = 0; // Identificador del vertex buffer object
         GLuint idIBO = 0; // Identificador del index buffer object
@@ -38,6 +45,7 @@ namespace PAG
     public:
         virtual ~Renderer ();
         static Renderer& getInstancia ();
+
         void refrescar ();
         void setViewport(int width, int height);
         void colorear();
@@ -49,7 +57,6 @@ namespace PAG
         void setbgBlue (float bgBlue);
 
         void activarTestProfundidad();
-
         void informePropiedades();
 
         void creaShaderProgram(const std::string& nombreBase="pag03");
@@ -58,7 +65,7 @@ namespace PAG
 
         void inicializaOpenGL();
 
-        std::string cargarArchivoTexto(const std::string& ruta);
+        //std::string cargarArchivoTexto(const std::string& ruta);
     };
 }
 
