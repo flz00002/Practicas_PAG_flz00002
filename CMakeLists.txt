@@ -13,7 +13,9 @@ add_executable(${PROJECT_NAME} ${MY_FILES}
                                ${GLAD_FILES}
                                ${IMGUI_FILES}
                                 main.cpp
-                                Renderer.cpp)
+                                Renderer.cpp
+        ShaderProgram.cpp
+        ShaderProgram.h)
 
 find_package(OpenGL REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
