@@ -15,12 +15,15 @@ add_executable(${PROJECT_NAME} ${MY_FILES}
                                 main.cpp
                                 Renderer.cpp
         ShaderProgram.cpp
-        ShaderProgram.h)
+        ShaderProgram.h
+        Camara.cpp
+        Camara.h)
 
 find_package(OpenGL REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL glfw)
 
 target_include_directories( ${PROJECT_NAME} PUBLIC GLAD/include
-                                                imgui/include)
+                                                imgui/include
+                                                ${CMAKE_SOURCE_DIR})
 
