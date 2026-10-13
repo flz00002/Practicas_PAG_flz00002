@@ -66,6 +66,9 @@ namespace PAG
 
         _shaderProgram.activar();
 
+        glm::mat4 mvp = _camara.getMatrizProyeccion() * _camara.getMatrizVision();
+        _shaderProgram.setUniform("mModelViewProj", mvp);
+
         glBindVertexArray ( idVAO );
         glBindBuffer ( GL_ELEMENT_ARRAY_BUFFER, idIBO );
         glDrawElements ( GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr );
@@ -75,6 +78,9 @@ namespace PAG
 
     void Renderer::setViewport (int width, int height) {
         glViewport(0, 0, width, height);
+        if (height > 0) {
+            _camara.setViewportRatio((float)width / (float)height);
+        }
     }
 
     float Renderer::getbgRed() {

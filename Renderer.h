@@ -9,6 +9,7 @@
 #include <iostream>
 
 #include "ShaderProgram.h"
+#include "Camara.h"
 
 /**
 * Espacio de nombres para las prácticas de Programación de Aplicaciones Gráficas
@@ -30,6 +31,7 @@ namespace PAG
         Renderer ();
 
         ShaderProgram _shaderProgram;
+        Camara _camara;
 
         /*
         GLuint idVS = 0; // Identificador del vertex shader
@@ -64,6 +66,8 @@ namespace PAG
         void creaModelo();
 
         void inicializaOpenGL();
+
+        Camara& getCamara() { return _camara; }
 
         //std::string cargarArchivoTexto(const std::string& ruta);
     };
