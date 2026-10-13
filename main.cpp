@@ -12,6 +12,11 @@
 // Vector global para almacenar los mensajes de la consola de ImGui
 std::vector<std::string> logMensajes;
 
+// Variables globales para la gestión del ratón y el movimiento de la cámara
+static bool botonIzquierdoPulsado = false;
+static double ultimoX = 0.0, ultimoY = 0.0;
+static PAG::TipoMovimiento movimientoActivo = PAG::TipoMovimiento::ZOOM;
+
 // Buffer de caracteres estático para almacenar el nombre del shader en ImGui nativo
 static char nombreShaderBuf[256] = "pag03";
 
@@ -62,6 +67,14 @@ void key_callback ( GLFWwindow *window, int key, int scancode, int action, int m
 // - Esta función callback será llamada cada vez que se pulse algún botón
 // del ratón sobre el área de dibujo OpenGL.
 void mouse_button_callback ( GLFWwindow *window, int button, int action, int mods ){
+    if (button==GLFW_MOUSE_BUTTON_LEFT) {
+        if (action==GLFW_PRESS) {
+            botonIzquierdoPulsado = true;
+            glfwGetCursorPos(window, &ultimoX, &ultimoY); // Guarda posición inicial del click
+        } else if (action==GLFW_RELEASE) {
+            botonIzquierdoPulsado=false;
+        }
+    }
     if ( action == GLFW_PRESS ){
         //std::cout << "Pulsado el boton: " << button << std::endl;
         addLog("Pulsado el boton "+std::to_string(button));
@@ -73,6 +86,48 @@ void mouse_button_callback ( GLFWwindow *window, int button, int action, int mod
         ImGuiIO& io = ImGui::GetIO ();
         io.AddMouseButtonEvent ( button, false );
     }
+}
+
+// Callback para procesar el movimiento del cursor al hacer clic y arrastrar
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
+    ImGui_ImplGlfw_CursorPosCallback(window, xpos, ypos);
+
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureMouse) {
+        return; // Ignora el movimiento si se interactúa con ImGui
+    }
+
+    if (botonIzquierdoPulsado) {
+        float deltaX = static_cast<float>(xpos - ultimoX);
+        float deltaY = static_cast<float>(ypos - ultimoY);
+        float sensibilidad = 0.2f;
+
+        auto& camara = PAG::Renderer::getInstancia().getCamara();
+
+        switch (movimientoActivo) {
+            case PAG::TipoMovimiento::PAN:
+                camara.pan(deltaX * sensibilidad);
+                break;
+            case PAG::TipoMovimiento::TILT:
+                camara.tilt(deltaY * sensibilidad);
+                break;
+            case PAG::TipoMovimiento::DOLLY:
+                camara.dolly(deltaX * 0.01f, deltaY * 0.01f);
+                break;
+            case PAG::TipoMovimiento::CRANE:
+                camara.crane(-deltaY * 0.01f);
+                break;
+            case PAG::TipoMovimiento::ORBIT:
+                camara.orbit(deltaY * sensibilidad, deltaX * sensibilidad);
+                break;
+            case PAG::TipoMovimiento::ZOOM:
+                camara.zoom(deltaY * sensibilidad);
+                break;
+        }
+    }
+
+    ultimoX = xpos;
+    ultimoY = ypos;
 }
 
 // - Esta función callback será llamada cada vez que se mueva la rueda
@@ -158,6 +213,7 @@ int main(){
     glfwSetFramebufferSizeCallback ( window, framebuffer_size_callback );
     glfwSetKeyCallback ( window, key_callback );
     glfwSetMouseButtonCallback ( window, mouse_button_callback );
+    glfwSetCursorPosCallback ( window, cursor_position_callback );
     glfwSetScrollCallback ( window, scroll_callback );
 
     // - Establecemos un gris medio como color con el que se borrará el frame buffer.
@@ -242,6 +298,57 @@ int main(){
                 } catch (const std::exception& e) {
                     addLog("[ERROR EN SHADERS]: " + std::string(e.what()));
                 }
+            }
+        }
+        ImGui::End();
+
+        // Ventana ImGui "Camera" para seleccionar el tipo de movimiento y aplicar controles directos
+        ImGui::SetNextWindowPos(ImVec2(10, 400), ImGuiCond_Once);
+        ImGui::SetNextWindowSize(ImVec2(400, 160), ImGuiCond_Once);
+        if (ImGui::Begin("Camera")) {
+            ImGui::SetWindowFontScale(1.0f);
+
+            const char* opcionesMovimiento[] = { "Pan", "Tilt", "Dolly", "Crane", "Orbit", "Zoom" };
+            int opcionActual = static_cast<int>(movimientoActivo);
+
+            if (ImGui::Combo("Movement", &opcionActual, opcionesMovimiento, IM_ARRAYSIZE(opcionesMovimiento))) {
+                movimientoActivo = static_cast<PAG::TipoMovimiento>(opcionActual);
+            }
+
+            auto& camara = PAG::Renderer::getInstancia().getCamara();
+
+            // Interfaz adaptativa según el movimiento seleccionado
+            if (movimientoActivo == PAG::TipoMovimiento::ZOOM) {
+                float fovy = camara.getFovy();
+                if (ImGui::SliderFloat("Angle", &fovy, 1.0f, 90.0f)) {
+                    camara.setFovy(fovy);
+                }
+            } else if (movimientoActivo == PAG::TipoMovimiento::PAN) {
+                if (ImGui::Button("<- Left"))  camara.pan(-5.0f);
+                ImGui::SameLine();
+                if (ImGui::Button("Right ->")) camara.pan(5.0f);
+            } else if (movimientoActivo == PAG::TipoMovimiento::TILT) {
+                if (ImGui::Button("^ Up ^"))   camara.tilt(-5.0f);
+                ImGui::SameLine();
+                if (ImGui::Button("v Down v")) camara.tilt(5.0f);
+            } else if (movimientoActivo == PAG::TipoMovimiento::DOLLY) {
+                if (ImGui::Button("<- Left"))  camara.dolly(-0.1f, 0.0f);
+                ImGui::SameLine();
+                if (ImGui::Button("Right ->")) camara.dolly(0.1f, 0.0f);
+                if (ImGui::Button("^ Back ^"))  camara.dolly(0.0f, 0.1f);
+                ImGui::SameLine();
+                if (ImGui::Button("v Front v")) camara.dolly(0.0f, -0.1f);
+            } else if (movimientoActivo == PAG::TipoMovimiento::CRANE) {
+                if (ImGui::Button("^ Up ^"))   camara.crane(0.1f);
+                ImGui::SameLine();
+                if (ImGui::Button("v Down v")) camara.crane(-0.1f);
+            } else if (movimientoActivo == PAG::TipoMovimiento::ORBIT) {
+                if (ImGui::Button("North ^")) camara.orbit(5.0f, 0.0f);
+                ImGui::SameLine();
+                if (ImGui::Button("South v")) camara.orbit(-5.0f, 0.0f);
+                if (ImGui::Button("West <-")) camara.orbit(0.0f, -5.0f);
+                ImGui::SameLine();
+                if (ImGui::Button("East ->")) camara.orbit(0.0f, 5.0f);
             }
         }
         ImGui::End();
