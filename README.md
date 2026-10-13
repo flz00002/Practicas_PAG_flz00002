@@ -61,3 +61,66 @@ Al redimensionar la ventana cambia su relación de aspecto (ancho/alto),
 por lo que el espacio [-1,1] se escala de forma desigual en cada eje. Esto
 sucede porque no se está utilizando una matriz de proyección que compense
 la proporción de la ventana y mantenga la geometría original del objeto.
+
+# Práctica 4
+
+## Desacoplamiento realizado
+La gestión de código GLSL se ha extraído de `PAG::Renderer` hacia la clase
+dedicada `PAG::ShaderProgram`:
+* `PAG::ShaderProgram`: Encapsula el identificador de OpenGL (`idSP`), la 
+lectura de archivos GLSL (`-vs.glsl` y `-fs.glsl`), la compilación individual
+de *vertex* y *fragment shaders*, el enlazado, la captura de errores, la 
+activación con `glUseProgram` y la liberación de recursos.
+* `PAG::Renderer`: Mantiene un objeto miembro `_shaderProgram` de tipo 
+`PAG::ShaderProgram` y delega en este tanto la compilación como la activación
+durante la fase de refresco de la escena.
+
+## Cambios realizados
+1. **Creación de la clase `PAG::ShaderProgram` (`ShaderProgram.h` / `ShaderProgram.cpp`):**
+    * Método `compilarYEnlazar(const std::string& nombreBase)` para leer, compilar, enlazar y verificar fallos en tiempo de ejecución[cite: 1].
+    * Método `activar()` para vincular el programa activo en el pipeline con `glUseProgram`[cite: 1].
+    * Método `purgar()` para eliminar el programa de la memoria gráfica con `glDeleteProgram`.
+2. **Refactorización de `PAG::Renderer` (`renderer.h` / `renderer.cpp`):**
+    * Eliminación de los atributos `idVS`, `idFS` e `idSP`, así como del método privado `cargarArchivoTexto`.
+    * Adaptación de `creaShaderProgram(nombreBase)` y `refrescar()` para delegar la lógica en `_shaderProgram`.
+3. **Interfaz Gráfica ImGui en `main.cpp`:**
+    * Incorporación de la ventana "Shader Program" con un cuadro de texto (`ImGui::InputText`) respaldado por un buffer `char[256]` nativo y un botón `"Load"` para compilar shaders dinámicamente[cite: 2, 3].
+    * Captura de excepciones `std::runtime_error` durante el enlazado o compilación, redirigiendo los mensajes de error a la consola gráfica "Mensajes".
+4. **Sincronización de Callbacks con ImGui:**
+    * Invocación de `ImGui_ImplGlfw_KeyCallback`, `ImGui_ImplGlfw_MouseButtonCallback` y `ImGui_ImplGlfw_ScrollCallback` dentro de los callbacks de GLFW para permitir la edición interactiva del cuadro de texto (borrado con Backspace, selección y navegación con teclado).
+
+## Diagrama UML
+```mermaid
+classDiagram
+    namespace PAG {
+        class Renderer {
+            -static Renderer* instancia
+            -_shaderProgram: ShaderProgram
+            -GLuint idVAO
+            -GLuint idVBO
+            -GLuint idIBO
+            -float _colorBorrado[4]
+            -Renderer()
+            +getInstancia() Renderer&
+            +refrescar() void
+            +setViewport(int width, int height) void
+            +creaShaderProgram(string nombreBase) void
+            +creaModelo() void
+            +colorear() void
+            +activarTestProfundidad() void
+        }
+
+        class ShaderProgram {
+            -GLuint idSP
+            -cargarArchivoTexto(string ruta) string
+            +ShaderProgram()
+            +~ShaderProgram()
+            +compilarYEnlazar(string nombreBase) void
+            +activar() void
+            +purgar() void
+            +getId() GLuint
+        }
+    }
+
+    Renderer "1" *-- "1" ShaderProgram : encapsula
+```
