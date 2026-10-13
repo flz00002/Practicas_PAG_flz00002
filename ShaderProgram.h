@@ -8,6 +8,7 @@
 #include <glad/glad.h>
 #include <string>
 #include <stdexcept>
+#include <glm/glm.hpp>
 
 namespace PAG {
     class ShaderProgram {
@@ -23,6 +24,8 @@ namespace PAG {
         void compilarYEnlazar(const std::string& nombreBase);
         void activar() const;
         void purgar();
+
+        void setUniform(const std::string& nombre, const glm::mat4& matriz);
 
         GLuint getId() const { return idSP; }
     };

@@ -5,6 +5,7 @@
 #include "ShaderProgram.h"
 #include <fstream>
 #include <sstream>
+#include <glm/gtc/type_ptr.hpp>
 
 namespace PAG {
 
@@ -95,6 +96,15 @@ namespace PAG {
     void ShaderProgram::activar() const {
         if (idSP != 0) {
             glUseProgram(idSP);
+        }
+    }
+
+    void ShaderProgram::setUniform(const std::string& nombre, const glm::mat4& matriz) {
+        if (idSP != 0) {
+            GLint location = glGetUniformLocation(idSP, nombre.c_str());
+            if (location != -1) {
+                glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(matriz));
+            }
         }
     }
 }
