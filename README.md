@@ -77,14 +77,14 @@ durante la fase de refresco de la escena.
 
 ## Cambios realizados
 1. **Creación de la clase `PAG::ShaderProgram` (`ShaderProgram.h` / `ShaderProgram.cpp`):**
-    * Método `compilarYEnlazar(const std::string& nombreBase)` para leer, compilar, enlazar y verificar fallos en tiempo de ejecución[cite: 1].
-    * Método `activar()` para vincular el programa activo en el pipeline con `glUseProgram`[cite: 1].
+    * Método `compilarYEnlazar(const std::string& nombreBase)` para leer, compilar, enlazar y verificar fallos en tiempo de ejecución.
+    * Método `activar()` para vincular el programa activo en el pipeline con `glUseProgram`.
     * Método `purgar()` para eliminar el programa de la memoria gráfica con `glDeleteProgram`.
 2. **Refactorización de `PAG::Renderer` (`renderer.h` / `renderer.cpp`):**
     * Eliminación de los atributos `idVS`, `idFS` e `idSP`, así como del método privado `cargarArchivoTexto`.
     * Adaptación de `creaShaderProgram(nombreBase)` y `refrescar()` para delegar la lógica en `_shaderProgram`.
 3. **Interfaz Gráfica ImGui en `main.cpp`:**
-    * Incorporación de la ventana "Shader Program" con un cuadro de texto (`ImGui::InputText`) respaldado por un buffer `char[256]` nativo y un botón `"Load"` para compilar shaders dinámicamente[cite: 2, 3].
+    * Incorporación de la ventana "Shader Program" con un cuadro de texto (`ImGui::InputText`) respaldado por un buffer `char[256]` nativo y un botón `"Load"` para compilar shaders dinámicamente.
     * Captura de excepciones `std::runtime_error` durante el enlazado o compilación, redirigiendo los mensajes de error a la consola gráfica "Mensajes".
 4. **Sincronización de Callbacks con ImGui:**
     * Invocación de `ImGui_ImplGlfw_KeyCallback`, `ImGui_ImplGlfw_MouseButtonCallback` y `ImGui_ImplGlfw_ScrollCallback` dentro de los callbacks de GLFW para permitir la edición interactiva del cuadro de texto (borrado con Backspace, selección y navegación con teclado).
@@ -124,3 +124,97 @@ classDiagram
 
     Renderer "1" *-- "1" ShaderProgram : encapsula
 ```
+
+# Práctica 5
+## Cambios realizados
+### 1. Encapsulacion en la Clase `PAG::Camara`
+* **Definición de parámetros:** La cámara almacena su posición en el espacio (`_posicion`), el punto al que mira (`_lookAt`), el vector de orientación vertical (`_up`), el ángulo de visión vertical (`_fovy`), la relación de aspecto del viewport (`_aspecto`) y los planos de corte cercano y lejano (`_zNear`, `_zFar`).
+* **Generación de matrices:** Implementación de los métodos `getMatrizVision()` mediante `glm::lookAt` y `getMatrizProyeccion()` mediante `glm::perspective`.
+* **Implementación de movimientos:**
+   * **Pan / Tilt:** Rotaciones de la dirección de visión sobre el eje local vertical u horizontal respectivamente.
+   * **Dolly / Crane:** Traslaciones sobre el plano local de la cámara o sobre el eje vertical $Y$ del mundo.
+   * **Orbit:** Rotación en latitud y longitud de la posición de la cámara alrededor del punto de interés (`_lookAt`).
+   * **Zoom:** Modificación restringida del ángulo de visión vertical `_fovy`.
+
+### 2. Actualización del Pipeline y Vertex Shader
+* **Vertex Shader (`pag03-vs.glsl`):** Incorporación de la variable `uniform mat4 mModelViewProj` para transformar las coordenadas de los vértices del modelo antes de pasar a la fase de rasterización.
+* **`PAG::ShaderProgram`:** Método `setUniform(nombre, matriz)` para transferir la matriz `glm::mat4` a la GPU utilizando `glUniformMatrix4fv`.
+* **`PAG::Renderer`:** En cada ciclo de refresco (`refrescar()`), el *Renderer* solicita las matrices a la cámara, calcula la matriz combinada $\text{MVP} = \text{Proyección} \times \text{Vista}$ y la envía al *shader program* antes de renderizar la geometría.
+
+### 3. Interacción y Gestión de Eventos
+* **Ventana ImGui "Camera":** Ventana dedicada con un selector desplegable (*Combo Box*) para alternar entre los tipos de movimiento (`PAG::TipoMovimiento`) y paneles adaptativos con botones y controles deslizantes (*Sliders*).
+* **Arrastre con ratón (`cursor_position_callback`):** Registro de callback en GLFW que detecta cuando el botón izquierdo se mantiene pulsado sobre la ventana de dibujo y traslada la diferencia de píxeles recorridos ($\Delta X, \Delta Y$) al movimiento activo de la cámara.
+* **Ajuste de Aspect Ratio:** Modificación de `setViewport` para actualizar dinámicamente la relación de aspecto de la cámara al redimensionar la ventana gráfica.
+
+## Decisión de Diseño y Arquitectura
+
+* **Desacoplamiento Matemático:** La cámara se diseñó como una clase independiente dentro del espacio de nombres `PAG`. De esta forma, el cálculo de trasformaciones matemáticas queda aislado tanto de OpenGL como de la interfaz gráfica.
+* **Coordinación desde `PAG::Renderer`:** Se mantiene la arquitectura Singleton de `Renderer` como director principal. `Renderer` posee la instancia de `Camara` y garantiza que la matriz MVP se actualice correctamente en el pipeline en cada fotograma.
+* **Prevención de Interferencias con la GUI (`WantCaptureMouse`):** En el callback del movimiento del ratón se comprueba la propiedad `ImGui::GetIO().WantCaptureMouse`. Si el usuario interactúa con controles dentro de una ventana de ImGui, el movimiento de la cámara se bloquea para evitar desplazamientos accidentales.
+
+## Instrucciones de Uso
+
+1. **Control mediante la Ventana "Camera" (ImGui):**
+   * Selecciona el movimiento deseado en el menú desplegable **Movement** (*Zoom, Pan, Tilt, Dolly, Crane, Orbit*).
+   * Utiliza los botones específicos que aparecen debajo para realizar desplazamientos finos en la dirección elegida.
+   * En el modo **Zoom**, ajusta el slider **Angle** para modificar gradualmente el campo de visión.
+2. **Control por Ratón (Clic y Arrastre):**
+   * Haz clic con el **botón izquierdo del ratón** sobre el lienzo 3D y arrastra en cualquier dirección. La cámara se moverá fluidamente aplicando el tipo de movimiento que esté seleccionado en la ventana "Camera".
+3. **Carga de Shaders y Fondo:**
+   * Utiliza el panel **Fondo** para cambiar el color de borrado o usa la rueda del ratón.
+   * Escribe el nombre base de cualquier shader en el panel **Shader Program** y pulsa **Load** para recompilar en caliente.
+
+## Diagrama UML
+```mermaid
+classDiagram
+namespace PAG {
+class TipoMovimiento {
+<<enumeration>>
+PAN
+TILT
+DOLLY
+CRANE
+ORBIT
+ZOOM
+}
+
+        class Camara {
+            -vec3 _posicion
+            -vec3 _lookAt
+            -vec3 _up
+            -float _fovy
+            -float _aspecto
+            -float _zNear
+            -float _zFar
+            +getMatrizVision() mat4
+            +getMatrizProyeccion() mat4
+            +setViewportRatio(float aspecto) void
+            +setFovy(float fovy) void
+            +pan(float deltaX) void
+            +tilt(float deltaY) void
+            +dolly(float deltaX, float deltaZ) void
+            +crane(float deltaY) void
+            +orbit(float deltaLat, float deltaLon) void
+            +zoom(float deltaFov) void
+        }
+
+        class Renderer {
+            -static Renderer* instancia
+            -ShaderProgram _shaderProgram
+            -Camara _camara
+            +getInstancia() Renderer&
+            +refrescar() void
+            +setViewport(int width, int height) void
+            +getCamara() Camara&
+        }
+
+        class ShaderProgram {
+            -GLuint idSP
+            +compilarYEnlazar(string nombreBase) void
+            +activar() void
+            +setUniform(string nombre, mat4 matriz) void
+        }
+    }
+
+    Renderer "1" *-- "1" Camara : contiene
+    Renderer "1" *-- "1" ShaderProgram : utiliza
