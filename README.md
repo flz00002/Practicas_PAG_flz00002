@@ -218,3 +218,162 @@ ZOOM
 
     Renderer "1" *-- "1" Camara : contiene
     Renderer "1" *-- "1" ShaderProgram : utiliza
+```
+# Práctica 6: Gestionando modelos 3D
+
+En esta práctica se ha refactorizado la aplicación para desacoplar completamente la gestión de la geometría de la clase `PAG::Renderer`. 
+Se introduce la clase `PAG::Modelo`, la integración de la biblioteca **Assimp** para la carga de modelos en formato OBJ, la aplicación 
+de **transformaciones de modelado individuales** (traslación, rotación y escalado) y la posibilidad de gestionar múltiples objetos 
+simultáneamente en la escena desde **Dear ImGui**.
+
+---
+
+## Decisiones de Diseño y Arquitectura
+
+1. **Desacoplamiento de la Geometría (`PAG::Modelo`):**
+    * Se extrajo de `PAG::Renderer` toda la responsabilidad de crear y destruir los objetos OpenGL encargados de la representación geométrica (`VAO`, `VBO`, `IBO`).
+    * Cada instancia de `PAG::Modelo` almacena su propia geometría, número de índices, identificadores de buffers y transformaciones geométricas independientes.
+
+2. **Integración de Assimp para la carga de archivos OBJ:**
+    * Se utiliza `Assimp::Importer` procesando los flags `aiProcess_JoinIdenticalVertices`, `aiProcess_Triangulate` y `aiProcess_GenSmoothNormals`.
+    * Esto permite fusionar vértices duplicados, garantizar la triangulación de polígonos complejos y generar normales suavizadas automáticamente si el archivo OBJ no las define.
+    * Las mallas contenidas en la escena importada se condensan en un único conjunto de VBO e IBO por modelo para optimizar el rendimiento y mantener la simplicidad del pipeline.
+
+3. **Gestión Dinámica de la Escena (`PAG::Renderer`):**
+    * `PAG::Renderer` almacena la escena mediante una colección vectorial de punteros inteligentes `std::vector<std::unique_ptr<PAG::Modelo>>`.
+    * Esto garantiza una gestión automática de la memoria (RAII), invocando los destructores y liberando los buffers de OpenGL en la GPU (`glDeleteVertexArrays`, `glDeleteBuffers`) al eliminar un objeto o al cerrar la aplicación.
+
+4. **Transformaciones de Modelado e Integración MVP:**
+    * Cada modelo calcula su matriz de modelado local $M$ en el método `getMatrizModelado()` componiendo las transformaciones en el orden estándar:
+      $$M = \text{Translate}(\vec{pos}) \times \text{Rotate}_X(\theta_x) \times \text{Rotate}_Y(\theta_y) \times \text{Rotate}_Z(\theta_z) \times \text{Scale}(\vec{s})$$
+    * En cada ciclo de refresco (`refrescar()`), el *Renderer* combina las matrices de proyección ($P$), vista ($V$) y modelado ($M$) de cada objeto para enviar la matriz $\text{MVP} = P \times V \times M$ individualizada al *Shader Program* mediante la uniform `mModelViewProj`.
+
+5. **Modo de Visualización de Alambre (*Wireframe*):**
+    * Al no disponer aún de modelos de iluminación, se ha incorporado la casilla "Modo Alambre (Wireframe)" que alterna globalmente entre `glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)` y `glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)` para facilitar la inspección de la topología 3D de las mallas.
+
+---
+
+## Instrucciones de Uso (Ventana "Modelos 3D")
+
+1. **Modo Alambre:**
+    * Marca o desmarca la casilla **Modo Alambre (Wireframe)** para alternar entre la visualización en alambre y sólida de la escena.
+
+2. **Carga de Modelos 3D:**
+    * **Cargar OBJ:** Escribe la ruta de un archivo OBJ (ej. `modelos/coche.obj`) en el cuadro de texto y pulsa el botón **Cargar OBJ**. Si la ruta es válida, el modelo se incorporará a la escena.
+    * **+ Triángulo:** Pulsa este botón para añadir un triángulo procedural de prueba en cualquier momento.
+
+3. **Selección y Edición de Transformaciones:**
+    * Utiliza el desplegable **Modelo Seleccionado** para elegir el objeto de la escena que deseas modificar.
+    * Ajusta los controles de arrastre (*DragFloat3*) para modificar en tiempo real:
+        * **Posición (X, Y, Z):** Traslada el objeto en el espacio 3D.
+        * **Rotación (deg):** Rota el objeto en grados sobre los ejes X, Y y Z.
+        * **Escala (X, Y, Z):** Escala el objeto de forma independiente o uniforme.
+    * Pulsa el botón **Eliminar** para remover el objeto seleccionado de la escena gráfica y liberar su memoria GPU.
+
+---
+
+## Diagrama de Clases UML
+
+### Sintaxis PlantUML
+
+```plantuml
+@startuml
+namespace PAG {
+    enum TipoMovimiento {
+        PAN
+        TILT
+        DOLLY
+        CRANE
+        ORBIT
+        ZOOM
+    }
+
+    class Camara {
+        - glm::vec3 _posicion
+        - glm::vec3 _lookAt
+        - glm::vec3 _up
+        - float _fovy
+        - float _aspecto
+        - float _zNear
+        - float _zFar
+        + Camara()
+        + glm::mat4 getMatrizVision() const
+        + glm::mat4 getMatrizProyeccion() const
+        + void setViewportRatio(float aspecto)
+        + void setFovy(float fovy)
+        + void pan(float deltaX)
+        + void tilt(float deltaY)
+        + void dolly(float deltaX, float deltaZ)
+        + void crane(float deltaY)
+        + void orbit(float deltaLat, float deltaLon)
+        + void zoom(float deltaFov)
+    }
+
+    class ShaderProgram {
+        - GLuint idSP
+        - std::string cargarArchivoTexto(const std::string& ruta)
+        + ShaderProgram()
+        + ~ShaderProgram()
+        + void compilarYEnlazar(const std::string& nombreBase)
+        + void activar() const
+        + void purgar()
+        + void setUniform(const std::string& nombre, const glm::mat4& matriz)
+        + GLuint getId() const
+    }
+
+    class Modelo {
+        - GLuint _idVAO
+        - GLuint _idVBO
+        - GLuint _idIBO
+        - GLsizei _numIndices
+        - std::string _nombre
+        - glm::vec3 _posicion
+        - glm::vec3 _rotacion
+        - glm::vec3 _escala
+        - void purgar()
+        + Modelo(const std::string& nombre)
+        + ~Modelo()
+        + void creaTrianguloProcedural()
+        + void cargarOBJ(const std::string& rutaArchivo)
+        + void dibujar() const
+        + glm::mat4 getMatrizModelado() const
+        + const std::string& getNombre() const
+        + glm::vec3 getPosicion() const
+        + void setPosicion(const glm::vec3& pos)
+        + glm::vec3 getRotacion() const
+        + void setRotacion(const glm::vec3& rot)
+        + glm::vec3 getEscala() const
+        + void setEscala(const glm::vec3& esc)
+    }
+
+    class Renderer {
+        - static Renderer* instancia
+        - ShaderProgram _shaderProgram
+        - Camara _camara
+        - std::vector<std::unique_ptr<Modelo>> _modelos
+        - bool _modoAlambre
+        - float _colorBorrado[4]
+        - Renderer()
+        + static Renderer& getInstancia()
+        + virtual ~Renderer()
+        + void refrescar()
+        + void setViewport(int width, int height)
+        + void colorear()
+        + void activarTestProfundidad()
+        + void creaShaderProgram(const std::string& nombreBase)
+        + void anadirTrianguloProcedural(const std::string& nombre)
+        + void cargarModeloOBJ(const std::string& ruta, const std::string& nombre)
+        + void eliminarModelo(size_t indice)
+        + void vaciarEscena()
+        + bool getModoAlambre() const
+        + void setModoAlambre(bool alambre)
+        + Camara& getCamara()
+        + std::vector<std::unique_ptr<Modelo>>& getModelos()
+    }
+
+    Renderer "1" *-- "1" ShaderProgram : encapsula >
+    Renderer "1" *-- "1" Camara : contiene >
+    Renderer "1" *-- "*" Modelo : gestiona >
+}
+@enduml
+```
