@@ -24,7 +24,7 @@ namespace PAG
         }
         if ( idSP != 0 )
         { glDeleteProgram ( idSP );
-        }*/
+        }*//*
         if ( idVBO != 0 )
         { glDeleteBuffers ( 1, &idVBO );
         }
@@ -33,7 +33,8 @@ namespace PAG
         }
         if ( idVAO != 0 )
         { glDeleteVertexArrays ( 1, &idVAO );
-        }
+        }*/
+        _modelos.clear(); // Se destruyen automáticamente todos los objetos Modelo al salir
     }
     /**
     * Consulta del objeto único de la clase
@@ -62,18 +63,29 @@ namespace PAG
     */
     void Renderer::refrescar (){
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glPolygonMode ( GL_FRONT_AND_BACK, GL_FILL );
+
+        // Alterna el modo de rasterización entre sólido y alambre (útil sin luces)
+        if (_modoAlambre) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // Modo alambre activo
+        } else {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); // Modo sólido activo
+        }
 
         _shaderProgram.activar();
 
-        glm::mat4 mvp = _camara.getMatrizProyeccion() * _camara.getMatrizVision();
-        _shaderProgram.setUniform("mModelViewProj", mvp);
+        /*glm::mat4 mvp = _camara.getMatrizProyeccion() * _camara.getMatrizVision();
+        _shaderProgram.setUniform("mModelViewProj", mvp);*/
 
-        glBindVertexArray ( idVAO );
-        glBindBuffer ( GL_ELEMENT_ARRAY_BUFFER, idIBO );
-        glDrawElements ( GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr );
+        glm::mat4 mProyeccion = _camara.getMatrizProyeccion();
+        glm::mat4 mVision = _camara.getMatrizVision();
 
-        glBindVertexArray(0);
+        // Renderizado iterativo de todos los modelos presentes aplicando su matriz MVP individual
+        for (const auto& modelo : _modelos) {
+            glm::mat4 mModel = modelo->getMatrizModelado(); // Obtención de la matriz de modelado
+            glm::mat4 mvp = mProyeccion * mVision * mModel; // Matriz MVP completa = P * V * M
+            _shaderProgram.setUniform("mModelViewProj", mvp); // Paso de la matriz al Shader Program
+            modelo->dibujar(); // AÑADIDO: Dibujado del objeto
+        }
     }
 
     void Renderer::setViewport (int width, int height) {
@@ -128,10 +140,35 @@ namespace PAG
         _shaderProgram.compilarYEnlazar(nombreBase);
     }
 
+    // Implementación de la gestión dinámica de mallas
+    void PAG::Renderer::anadirTrianguloProcedural(const std::string& nombre) {
+        auto modelo = std::make_unique<Modelo>(nombre);
+        modelo->creaTrianguloProcedural();
+        _modelos.push_back(std::move(modelo));
+    }
+
+    void PAG::Renderer::cargarModeloOBJ(const std::string& rutaArchivo, const std::string& nombre) {
+        auto modelo = std::make_unique<Modelo>(nombre);
+        modelo->cargarOBJ(rutaArchivo);
+        _modelos.push_back(std::move(modelo));
+    }
+
+    void PAG::Renderer::eliminarModelo(size_t indice) {
+        if (indice < _modelos.size()) {
+            _modelos.erase(_modelos.begin() + indice);
+        }
+    }
+
+    void PAG::Renderer::vaciarEscena() {
+        _modelos.clear();
+    }
+
+
     /**
     * Método para crear el VAO para el modelo a renderizar
     * @note No se incluye ninguna comprobación de errores
     */
+    /*
     void PAG::Renderer::creaModelo ( ){
         GLfloat vertices[] = { -.5, -.5, 0,
                                 .5, -.5, 0,
@@ -150,7 +187,7 @@ namespace PAG
         glBufferData ( GL_ELEMENT_ARRAY_BUFFER, 3*sizeof(GLuint), indices, GL_STATIC_DRAW );
 
         glBindVertexArray ( 0 );
-    }
+    }*/
 
     /**
     * Método para inicializar los parámetros globales de OpenGL
