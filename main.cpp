@@ -20,6 +20,10 @@ static PAG::TipoMovimiento movimientoActivo = PAG::TipoMovimiento::ZOOM;
 // Buffer de caracteres estático para almacenar el nombre del shader en ImGui nativo
 static char nombreShaderBuf[256] = "pag03";
 
+// Buffers y estados globales para la ventana ImGui de Modelos 3D
+static char rutaModeloBuf[256] = "modelos/t-rex.obj"; // Buffer para escribir la ruta del archivo OBJ
+static int modeloSeleccionadoIndex = 0; // Índice del modelo activo para aplicar transformaciones
+
 // Función aux para añadir mensajes al log
 void addLog(const std::string& msg) {
     logMensajes.push_back(msg);
@@ -233,7 +237,7 @@ int main(){
         addLog("[ERROR]"+std::string(e.what()));
     }
 
-    PAG::Renderer::getInstancia().creaModelo ();
+    PAG::Renderer::getInstancia().anadirTrianguloProcedural("Triangulo_01");
 
     while ( !glfwWindowShouldClose ( window ) ){
 
@@ -349,6 +353,94 @@ int main(){
                 if (ImGui::Button("West <-")) camara.orbit(0.0f, -5.0f);
                 ImGui::SameLine();
                 if (ImGui::Button("East ->")) camara.orbit(0.0f, 5.0f);
+            }
+        }
+        ImGui::End();
+
+        // Ventana ImGui "Modelos 3D" para cargar archivos OBJ, seleccionar objetos y aplicar transformaciones
+        ImGui::SetNextWindowPos(ImVec2(430, 260), ImGuiCond_Once);
+        ImGui::SetNextWindowSize(ImVec2(580, 290), ImGuiCond_Once);
+        if (ImGui::Begin("Modelos 3D")) {
+            ImGui::SetWindowFontScale(1.0f);
+
+            // Casilla para alternar el modo de dibujado sólido o alambre
+            bool modoAlambre = PAG::Renderer::getInstancia().getModoAlambre();
+            if (ImGui::Checkbox("Modo Alambre (Wireframe)", &modoAlambre)) {
+                PAG::Renderer::getInstancia().setModoAlambre(modoAlambre);
+            }
+
+            ImGui::Separator();
+
+            // Carga interactiva de modelos OBJ mediante ruta de archivo
+            ImGui::Text("Cargar Modelo OBJ:");
+            ImGui::InputText("##rutaOBJ", rutaModeloBuf, sizeof(rutaModeloBuf));
+            ImGui::SameLine();
+            if (ImGui::Button("Cargar OBJ")) {
+                try {
+                    std::string rutaStr(rutaModeloBuf);
+                    std::string nombreModelo = "Modelo_" + std::to_string(PAG::Renderer::getInstancia().getModelos().size() + 1);
+                    PAG::Renderer::getInstancia().cargarModeloOBJ(rutaStr, nombreModelo);
+                    addLog("Modelo OBJ cargado con éxito: " + rutaStr);
+                } catch (const std::exception& e) {
+                    addLog("[ERROR MODELO]: " + std::string(e.what()));
+                }
+            }
+
+            ImGui::SameLine();
+            if (ImGui::Button("+ Triangulo")) {
+                std::string nombreModelo = "Triangulo_" + std::to_string(PAG::Renderer::getInstancia().getModelos().size() + 1);
+                PAG::Renderer::getInstancia().anadirTrianguloProcedural(nombreModelo);
+                addLog("Triángulo procedural añadido.");
+            }
+
+            ImGui::Separator();
+
+            // Selección de modelo y edición de transformaciones individuales
+            auto& modelos = PAG::Renderer::getInstancia().getModelos();
+            if (!modelos.empty()) {
+                if (modeloSeleccionadoIndex >= static_cast<int>(modelos.size())) {
+                    modeloSeleccionadoIndex = static_cast<int>(modelos.size()) - 1;
+                }
+
+                std::vector<std::string> nombresModelos;
+                std::vector<const char*> itemsPtr;
+                for (size_t i = 0; i < modelos.size(); ++i) {
+                    nombresModelos.push_back("[" + std::to_string(i) + "] " + modelos[i]->getNombre());
+                }
+                for (const auto& n : nombresModelos) itemsPtr.push_back(n.c_str());
+
+                ImGui::Combo("Modelo Seleccionado", &modeloSeleccionadoIndex, itemsPtr.data(), static_cast<int>(itemsPtr.size()));
+
+                ImGui::SameLine();
+                if (ImGui::Button("Eliminar")) {
+                    PAG::Renderer::getInstancia().eliminarModelo(modeloSeleccionadoIndex);
+                    addLog("Modelo eliminado de la escena.");
+                    if (modeloSeleccionadoIndex > 0) modeloSeleccionadoIndex--;
+                }
+
+                if (!modelos.empty() && modeloSeleccionadoIndex < static_cast<int>(modelos.size())) {
+                    auto* mod = modelos[modeloSeleccionadoIndex].get();
+
+                    // Control de Posición (Traslación)
+                    glm::vec3 pos = mod->getPosicion();
+                    if (ImGui::DragFloat3("Posicion (X, Y, Z)", &pos.x, 0.05f)) {
+                        mod->setPosicion(pos);
+                    }
+
+                    // Control de Rotación en grados
+                    glm::vec3 rot = mod->getRotacion();
+                    if (ImGui::DragFloat3("Rotacion (deg)", &rot.x, 1.0f)) {
+                        mod->setRotacion(rot);
+                    }
+
+                    // Control de Escala
+                    glm::vec3 esc = mod->getEscala();
+                    if (ImGui::DragFloat3("Escala (X, Y, Z)", &esc.x, 0.05f, 0.01f, 10.0f)) {
+                        mod->setEscala(esc);
+                    }
+                }
+            } else {
+                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "No hay modelos en la escena.");
             }
         }
         ImGui::End();
