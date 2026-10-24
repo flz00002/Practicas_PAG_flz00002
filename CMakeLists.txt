@@ -11,17 +11,12 @@ file( GLOB IMGUI_FILES imgui/src/*.cpp)
 
 add_executable(${PROJECT_NAME} ${MY_FILES}
                                ${GLAD_FILES}
-                               ${IMGUI_FILES}
-                                main.cpp
-                                Renderer.cpp
-        ShaderProgram.cpp
-        ShaderProgram.h
-        Camara.cpp
-        Camara.h)
+                               ${IMGUI_FILES})
 
 find_package(OpenGL REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL glfw)
+find_package(assimp REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL glfw assimp::assimp)
 
 target_include_directories( ${PROJECT_NAME} PUBLIC GLAD/include
                                                 imgui/include
