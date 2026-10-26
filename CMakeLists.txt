@@ -8,6 +8,7 @@ file( GLOB GLAD_FILES GLAD/src/*.c ) # Código fuente de GLAD
 file( GLOB MY_FILES *.cpp ) # Código fuente de tu proyecto
 file( GLOB IMGUI_FILES imgui/src/*.cpp)
 
+# Comentario para probar si funciona commit y push
 
 add_executable(${PROJECT_NAME} ${MY_FILES}
                                ${GLAD_FILES}
