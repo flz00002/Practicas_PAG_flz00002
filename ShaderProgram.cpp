@@ -107,4 +107,22 @@ namespace PAG {
             }
         }
     }
+
+    void ShaderProgram::setUniform(const std::string& nombre, const glm::vec3& vector) {
+        if (idSP != 0) {
+            GLint location = glGetUniformLocation(idSP, nombre.c_str());
+            if (location != -1) {
+                glUniform3fv(location, 1, glm::value_ptr(vector));
+            }
+        }
+    }
+
+    void ShaderProgram::activarSubrutina(GLenum shaderType, const std::string& nombreSubrutina) const {
+        if (idSP != 0) {
+            GLuint index = glGetSubroutineIndex(idSP, shaderType, nombreSubrutina.c_str());
+            if (index != GL_INVALID_INDEX) {
+                glUniformSubroutinesuiv(shaderType, 1, &index);
+            }
+        }
+    }
 }

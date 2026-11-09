@@ -26,6 +26,10 @@ namespace PAG {
         void purgar();
 
         void setUniform(const std::string& nombre, const glm::mat4& matriz);
+        void setUniform(const std::string& nombre, const glm::vec3& vector);
+
+        // Selección de subrutinas GLSL en tiempo de ejecución
+        void activarSubrutina(GLenum shaderType, const std::string& nombreSubrutina) const;
 
         GLuint getId() const { return idSP; }
     };
