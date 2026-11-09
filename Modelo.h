@@ -13,6 +13,16 @@
 
 namespace PAG {
     /**
+     * @brief Estructura que encapsula las propiedades ópticas del material de un modelo.
+     */
+    struct Material {
+        glm::vec3 Ka = glm::vec3(0.2f);           ///< Color ambiente
+        glm::vec3 Kd = glm::vec3(0.8f, 0.4f, 0.2f); ///< Color difuso
+        glm::vec3 Ks = glm::vec3(1.0f);           ///< Color especular
+        float shininess = 32.0f;                  ///< Exponente especular
+    };
+
+    /**
      * @brief Clase desacoplada encargada de gestionar el VAO, VBO, IBO y las
      * transformaciones de modelado de un objeto 3D.
      */
@@ -24,6 +34,7 @@ namespace PAG {
         GLsizei _numIndices = 0; ///< Número total de índices para el renderizado
 
         std::string _nombre; ///< Nombre descriptivo del modelo
+        Material _material; ///< Propiedades del material asignado
 
         // Atributos de transformación de modelado
         glm::vec3 _posicion = glm::vec3(0.0f); ///< Posición (traslación)
@@ -54,6 +65,9 @@ namespace PAG {
 
         glm::vec3 getEscala() const { return _escala; }
         void setEscala(const glm::vec3& esc) { _escala = esc; }
+
+        Material& getMaterial() { return _material; }
+        void setMaterial(const Material& mat) { _material = mat; }
     };
 }
 
