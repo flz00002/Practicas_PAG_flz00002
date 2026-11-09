@@ -377,3 +377,153 @@ namespace PAG {
 }
 @enduml
 ```
+
+# Práctica 7: Subrutinas GLSL y Gestión de Materiales
+
+## Decisiones de Diseño
+
+En esta práctica se ha extendido la aplicación gráfica para incorporar la gestión de materiales por objeto y la selección dinámica de modos de renderizado en la GPU sin recurrir a estructuras condicionales dentro de los shaders.
+
+### 1. Estructura e Integración del Material (`struct Material`)
+* **Encapsulación interna:** Se ha definido la estructura `Material` directamente dentro del espacio de nombres `PAG` (e integrada dentro de la clase `Modelo`). Esta almacena las propiedades ópticas fundamentales del objeto:
+   * `Ka`: Color ambiente ($vec3$).
+   * `Kd`: Color difuso ($vec3$).
+   * `Ks`: Color especular ($vec3$).
+   * `shininess`: Exponente especular / brillo ($float$).
+* **Desacoplamiento:** Cada instancia de `Modelo` posee su propio objeto `Material`. Durante el bucle de renderizado en `Renderer::refrescar()`, los parámetros del material (como `uKd`) se envían de forma individual al shader mediante uniforms antes de emitir las órdenes de dibujo (`glDrawElements`).
+
+### 2. Bloques de Interfaz GLSL (`interface blocks`)
+* Para organizar el flujo de datos entre las etapas del pipeline programable, se ha sustituido la declaración de variables `out` / `in` independientes por un bloque de interfaz conector denominado `salidaVS`:
+   * **Vertex Shader (`pag04-vs.glsl`):** Declara `out salidaVS { vec3 posicionV; vec3 normalV; } salida;`.
+   * **Fragment Shader (`pag04-fs.glsl`):** Declara `in salidaVS { vec3 posicionV; vec3 normalV; } entrada;`.
+* Esto previene colisiones de nombres en shaders complejos y mantiene una concordancia estructurada del flujo de datos inter-shader.
+
+### 3. Subrutinas GLSL para Modos de Visualización
+* **Evitación de condicionales en GPU:** Para cumplir con el objetivo de evitar bifurcaciones en el shader, se ha definido una firma de subrutina `subroutine vec4 fCalcularColor();` asociada al uniform `uMetodoColorElegido`.
+* **Implementaciones provistas:**
+   1. `colorRojo()`: Utilizada en el **Modo Alambre**, devuelve un color rojo fijo (`vec4(1.0, 0.0, 0.0, 1.0)`).
+   2. `colorSolido()`: Utilizada en el **Modo Sólido**, devuelve el color difuso asignado al material del modelo (`vec4(uKd, 1.0)`).
+* **Control C++:** En la clase `ShaderProgram`, se utiliza `glGetSubroutineIndex` para consultar los índices asignados por la GPU a cada función e `glUniformSubroutinesuiv` para activar la subrutina requerida antes del renderizado.
+
+### 4. Robustez en la Gestión de Shaders
+* Se ha implementado un mecanismo de seguridad en `ShaderProgram::activarSubrutina` que verifica la existencia de subrutinas activas (`GL_ACTIVE_SUBROUTINE_UNIFORMS`) antes de llamar a las funciones de OpenGL. Esto garantiza retrocompatibilidad total con shaders previos (como `pag03`) sin provocar fallos de ejecución.
+
+---
+
+## Manual de Usuario
+
+La interfaz gráfica desarrollada con **Dear ImGui** está organizada en ventanas interactivas independientes:
+
+### 1. Ventana de Mensajes (Log)
+* Muestra información técnica en tiempo real sobre el estado del sistema: versión de OpenGL/GLSL, confirmación de carga de shaders, errores de compilación y llamadas a callbacks.
+
+### 2. Ventana de Fondo
+* Contiene un selector de color (paleta RGB) para modificar dinámicamente el color de borrado del área de dibujo OpenGL. También se puede ajustar progresivamente haciendo scroll con la rueda del ratón.
+
+### 3. Ventana Shader Program
+* Permite introducir el nombre base de un conjunto de shaders (por ejemplo, `pag03` o `pag04`) en un campo de texto y pulsar el botón **Cargar**. La aplicación recompilará y enlazará los shaders al vuelo.
+
+### 4. Ventana Cámara
+* **Selector de Movimiento:** Permite elegir la acción interactiva de la cámara: *Pan*, *Tilt*, *Dolly*, *Crane*, *Orbit* o *Zoom*.
+* **Control por Ratón:** Haz clic izquierdo y arrastra sobre el viewport 3D para aplicar el movimiento seleccionado.
+* **Control Manual:** Incluye botones dedicados e indicadores (como el *Slider* del ángulo FOV en el modo *Zoom*).
+
+### 5. Ventana Modelos 3D y Materiales
+* **Modo de Visualización (Checkbox):**
+   * **Marcado (Modo Alambre):** Activa `glPolygonMode(..., GL_LINE)` y selecciona la subrutina `colorRojo`.
+   * **Desmarcado (Modo Sólido):** Activa `glPolygonMode(..., GL_FILL)` y selecciona la subrutina `colorSolido`.
+* **Carga de Modelos:**
+   * Escribe la ruta de un archivo OBJ (ej. `modelos/t-rex.obj`) y pulsa **Cargar OBJ**.
+   * Haz clic en **+ Triangulo** para añadir mallas procedurales básicas.
+* **Gestión de Selección:** Desplegable (*Combo Box*) para elegir el modelo activo en la escena o eliminarlo.
+* **Desplegable Transformaciones:** Deslizadores numéricos para modificar en tiempo real la **Posición** ($X, Y, Z$), **Rotación** (grados) y **Escala** del modelo seleccionado.
+* **Desplegable Propiedades del Material:** Controles para ajustar los componentes ópticos del objeto activo:
+   * **Color Difuso (Kd):** Paleta para cambiar el color base del modelo en modo sólido.
+   * **Color Ambiente (Ka):** Ajuste de reflectividad ambiental.
+   * **Color Especular (Ks):** Color de los destellos luminosos.
+   * **Brillo (Shininess):** Exponente de especularidad (rango $1.0$ a $128.0$).
+
+---
+
+## Diagrama de Clases UML
+
+```mermaid
+classDiagram
+    class Renderer {
+        -static Renderer* instancia
+        -ShaderProgram _shaderProgram
+        -Camara _camara
+        -vector~unique_ptr~Modelo~~ _modelos
+        -bool _modoAlambre
+        -float _colorBorrado[4]
+        +static Renderer& getInstancia()
+        +refrescar() void
+        +setViewport(width, height) void
+        +creaShaderProgram(nombreBase) void
+        +cargarModeloOBJ(ruta, nombre) void
+        +anadirTrianguloProcedural(nombre) void
+        +eliminarModelo(indice) void
+        +setModoAlambre(alambre) void
+        +getModoAlambre() bool
+        +getCamara() Camara&
+    }
+
+    class Material {
+        +vec3 Ka
+        +vec3 Kd
+        +vec3 Ks
+        +float shininess
+    }
+
+    class Modelo {
+        -GLuint _idVAO
+        -GLuint _idVBO
+        -GLuint _idIBO
+        -GLsizei _numIndices
+        -string _nombre
+        -Material _material
+        -vec3 _posicion
+        -vec3 _rotacion
+        -vec3 _escala
+        +cargarOBJ(ruta) void
+        +creaTrianguloProcedural() void
+        +dibujar() const void
+        +getMatrizModelado() mat4
+        +getMaterial() Material&
+        +setMaterial(mat) void
+        +setPosicion(pos) void
+        +setRotacion(rot) void
+        +setEscala(esc) void
+    }
+
+    class Camara {
+        -vec3 _posicion
+        -vec3 _centro
+        -vec3 _arriba
+        -float _fovy
+        -float _aspectRatio
+        +getMatrizVision() mat4
+        +getMatrizProyeccion() mat4
+        +pan(angulo) void
+        +tilt(angulo) void
+        +dolly(dx, dy) void
+        +crane(dy) void
+        +orbit(dPitch, dYaw) void
+        +zoom(delta) void
+    }
+
+    class ShaderProgram {
+        -GLuint idSP
+        +compilarYEnlazar(nombreBase) void
+        +activar() const void
+        +purgar() void
+        +setUniform(nombre, matriz) void
+        +setUniform(nombre, vector) void
+        +activarSubrutina(shaderType, nombreSubrutina) void
+    }
+
+    Renderer "1" *-- "1" ShaderProgram : gestiona
+    Renderer "1" *-- "1" Camara : contiene
+    Renderer "1" *-- "*" Modelo : contiene colección
+    Modelo "1" *-- "1" Material : posee
+```
