@@ -67,8 +67,10 @@ namespace PAG
         // Alterna el modo de rasterización entre sólido y alambre (útil sin luces)
         if (_modoAlambre) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // Modo alambre activo
+            _shaderProgram.activarSubrutina(GL_FRAGMENT_SHADER, "colorRojo");
         } else {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); // Modo sólido activo
+            _shaderProgram.activarSubrutina(GL_FRAGMENT_SHADER, "colorSolido");
         }
 
         _shaderProgram.activar();
@@ -84,7 +86,10 @@ namespace PAG
             glm::mat4 mModel = modelo->getMatrizModelado(); // Obtención de la matriz de modelado
             glm::mat4 mvp = mProyeccion * mVision * mModel; // Matriz MVP completa = P * V * M
             _shaderProgram.setUniform("mModelViewProj", mvp); // Paso de la matriz al Shader Program
-            modelo->dibujar(); // AÑADIDO: Dibujado del objeto
+
+            _shaderProgram.setUniform("uKd", modelo->getMaterial().Kd);
+
+            modelo->dibujar(); // Dibujado del objeto
         }
     }
 
