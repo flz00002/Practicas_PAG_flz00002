@@ -18,7 +18,7 @@ static double ultimoX = 0.0, ultimoY = 0.0;
 static PAG::TipoMovimiento movimientoActivo = PAG::TipoMovimiento::ZOOM;
 
 // Buffer de caracteres estático para almacenar el nombre del shader en ImGui nativo
-static char nombreShaderBuf[256] = "pag03";
+static char nombreShaderBuf[256] = "pag04";
 
 // Buffers y estados globales para la ventana ImGui de Modelos 3D
 static char rutaModeloBuf[256] = "modelos/t-rex.obj"; // Buffer para escribir la ruta del archivo OBJ
@@ -171,13 +171,13 @@ int main(){
     glfwWindowHint ( GLFW_SAMPLES, 4 ); // - Activa antialiasing con 4 muestras.
     glfwWindowHint ( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE ); // - Esta y las 2
     glfwWindowHint ( GLFW_CONTEXT_VERSION_MAJOR, 4 ); // siguientes activan un contexto
-    glfwWindowHint ( GLFW_CONTEXT_VERSION_MINOR, 3 ); // OpenGL Core Profile 4.3.
+    glfwWindowHint ( GLFW_CONTEXT_VERSION_MINOR, 1 ); // OpenGL Core Profile 4.3.
     // - Definimos el puntero para guardar la dirección de la ventana de la aplicación y
     // la creamos
     GLFWwindow *window;
     // - Tamaño, título de la ventana, en ventana y no en pantalla completa,
     // sin compartir recursos con otras ventanas.
-    window = glfwCreateWindow ( 1024, 576, "PAG Introduction", nullptr, nullptr );
+    window = glfwCreateWindow ( 1024, 576, "PAG Practicas", nullptr, nullptr );
     // - Comprobamos si la creación de la ventana ha tenido éxito.
     if ( window == nullptr )
     { std::cout << "Failed to open GLFW window" << std::endl;
@@ -232,7 +232,7 @@ int main(){
 
     try {
         PAG::Renderer::getInstancia().creaShaderProgram (nombreShaderBuf);
-        addLog("Shaders 'pag03' cargados y compilados correctamente");
+        addLog("Shaders 'pag04' cargados y compilados correctamente");
     }catch (const std::exception& e) {
         addLog("[ERROR]"+std::string(e.what()));
     }
@@ -358,44 +358,35 @@ int main(){
         ImGui::End();
 
         // Ventana ImGui "Modelos 3D" para cargar archivos OBJ, seleccionar objetos y aplicar transformaciones
-        ImGui::SetNextWindowPos(ImVec2(430, 260), ImGuiCond_Once);
-        ImGui::SetNextWindowSize(ImVec2(580, 290), ImGuiCond_Once);
-        if (ImGui::Begin("Modelos 3D")) {
-            ImGui::SetWindowFontScale(1.0f);
-
-            // Casilla para alternar el modo de dibujado sólido o alambre
+        ImGui::SetNextWindowPos(ImVec2(420, 240), ImGuiCond_Once);
+        ImGui::SetNextWindowSize(ImVec2(590, 340), ImGuiCond_Once);
+        if (ImGui::Begin("Modelos 3D y Materiales")) {
             bool modoAlambre = PAG::Renderer::getInstancia().getModoAlambre();
-            if (ImGui::Checkbox("Modo Alambre (Wireframe)", &modoAlambre)) {
+            if (ImGui::Checkbox("Modo Alambre (Subrutina colorRojo vs colorSolido)", &modoAlambre)) {
                 PAG::Renderer::getInstancia().setModoAlambre(modoAlambre);
             }
 
             ImGui::Separator();
 
-            // Carga interactiva de modelos OBJ mediante ruta de archivo
-            ImGui::Text("Cargar Modelo OBJ:");
             ImGui::InputText("##rutaOBJ", rutaModeloBuf, sizeof(rutaModeloBuf));
             ImGui::SameLine();
             if (ImGui::Button("Cargar OBJ")) {
                 try {
-                    std::string rutaStr(rutaModeloBuf);
                     std::string nombreModelo = "Modelo_" + std::to_string(PAG::Renderer::getInstancia().getModelos().size() + 1);
-                    PAG::Renderer::getInstancia().cargarModeloOBJ(rutaStr, nombreModelo);
-                    addLog("Modelo OBJ cargado con éxito: " + rutaStr);
+                    PAG::Renderer::getInstancia().cargarModeloOBJ(rutaModeloBuf, nombreModelo);
+                    addLog("OBJ Cargado: " + std::string(rutaModeloBuf));
                 } catch (const std::exception& e) {
-                    addLog("[ERROR MODELO]: " + std::string(e.what()));
+                    addLog("[ERROR OBJ]: " + std::string(e.what()));
                 }
             }
-
             ImGui::SameLine();
             if (ImGui::Button("+ Triangulo")) {
                 std::string nombreModelo = "Triangulo_" + std::to_string(PAG::Renderer::getInstancia().getModelos().size() + 1);
                 PAG::Renderer::getInstancia().anadirTrianguloProcedural(nombreModelo);
-                addLog("Triángulo procedural añadido.");
             }
 
             ImGui::Separator();
 
-            // Selección de modelo y edición de transformaciones individuales
             auto& modelos = PAG::Renderer::getInstancia().getModelos();
             if (!modelos.empty()) {
                 if (modeloSeleccionadoIndex >= static_cast<int>(modelos.size())) {
@@ -409,34 +400,37 @@ int main(){
                 }
                 for (const auto& n : nombresModelos) itemsPtr.push_back(n.c_str());
 
-                ImGui::Combo("Modelo Seleccionado", &modeloSeleccionadoIndex, itemsPtr.data(), static_cast<int>(itemsPtr.size()));
+                ImGui::Combo("Modelo Activo", &modeloSeleccionadoIndex, itemsPtr.data(), static_cast<int>(itemsPtr.size()));
 
                 ImGui::SameLine();
                 if (ImGui::Button("Eliminar")) {
                     PAG::Renderer::getInstancia().eliminarModelo(modeloSeleccionadoIndex);
-                    addLog("Modelo eliminado de la escena.");
                     if (modeloSeleccionadoIndex > 0) modeloSeleccionadoIndex--;
                 }
 
                 if (!modelos.empty() && modeloSeleccionadoIndex < static_cast<int>(modelos.size())) {
                     auto* mod = modelos[modeloSeleccionadoIndex].get();
 
-                    // Control de Posición (Traslación)
-                    glm::vec3 pos = mod->getPosicion();
-                    if (ImGui::DragFloat3("Posicion (X, Y, Z)", &pos.x, 0.05f)) {
-                        mod->setPosicion(pos);
+                    if (ImGui::TreeNode("Transformaciones")) {
+                        glm::vec3 pos = mod->getPosicion();
+                        if (ImGui::DragFloat3("Posicion", &pos.x, 0.05f)) mod->setPosicion(pos);
+
+                        glm::vec3 rot = mod->getRotacion();
+                        if (ImGui::DragFloat3("Rotacion", &rot.x, 1.0f)) mod->setRotacion(rot);
+
+                        glm::vec3 esc = mod->getEscala();
+                        if (ImGui::DragFloat3("Escala", &esc.x, 0.05f, 0.01f, 10.0f)) mod->setEscala(esc);
+
+                        ImGui::TreePop();
                     }
 
-                    // Control de Rotación en grados
-                    glm::vec3 rot = mod->getRotacion();
-                    if (ImGui::DragFloat3("Rotacion (deg)", &rot.x, 1.0f)) {
-                        mod->setRotacion(rot);
-                    }
-
-                    // Control de Escala
-                    glm::vec3 esc = mod->getEscala();
-                    if (ImGui::DragFloat3("Escala (X, Y, Z)", &esc.x, 0.05f, 0.01f, 10.0f)) {
-                        mod->setEscala(esc);
+                    if (ImGui::TreeNode("Propiedades del Material")) {
+                        auto& mat = mod->getMaterial();
+                        ImGui::ColorEdit3("Color Difuso (Kd)", &mat.Kd.x);
+                        ImGui::ColorEdit3("Color Ambiente (Ka)", &mat.Ka.x);
+                        ImGui::ColorEdit3("Color Especular (Ks)", &mat.Ks.x);
+                        ImGui::SliderFloat("Brillo (Shininess)", &mat.shininess, 1.0f, 128.0f);
+                        ImGui::TreePop();
                     }
                 }
             } else {
