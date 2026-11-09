@@ -64,6 +64,8 @@ namespace PAG
     void Renderer::refrescar (){
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        _shaderProgram.activar();
+
         // Alterna el modo de rasterización entre sólido y alambre (útil sin luces)
         if (_modoAlambre) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // Modo alambre activo
@@ -72,8 +74,6 @@ namespace PAG
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); // Modo sólido activo
             _shaderProgram.activarSubrutina(GL_FRAGMENT_SHADER, "colorSolido");
         }
-
-        _shaderProgram.activar();
 
         /*glm::mat4 mvp = _camara.getMatrizProyeccion() * _camara.getMatrizVision();
         _shaderProgram.setUniform("mModelViewProj", mvp);*/

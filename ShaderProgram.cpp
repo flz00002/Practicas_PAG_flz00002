@@ -118,11 +118,18 @@ namespace PAG {
     }
 
     void ShaderProgram::activarSubrutina(GLenum shaderType, const std::string& nombreSubrutina) const {
-        if (idSP != 0) {
-            GLuint index = glGetSubroutineIndex(idSP, shaderType, nombreSubrutina.c_str());
-            if (index != GL_INVALID_INDEX) {
-                glUniformSubroutinesuiv(shaderType, 1, &index);
-            }
+        if (idSP == 0) return;
+
+        // Verificar si el shader actual tiene subrutinas activas para este stage
+        GLint numSubrutinas = 0;
+        glGetProgramStageiv(idSP, shaderType, GL_ACTIVE_SUBROUTINE_UNIFORMS, &numSubrutinas);
+
+        // Si el shader no tiene subrutinas (como pag03), no hacemos nada
+        if (numSubrutinas <= 0) return;
+
+        GLuint index = glGetSubroutineIndex(idSP, shaderType, nombreSubrutina.c_str());
+        if (index != GL_INVALID_INDEX) {
+            glUniformSubroutinesuiv(shaderType, 1, &index);
         }
     }
 }
