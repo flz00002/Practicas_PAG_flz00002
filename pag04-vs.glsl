@@ -1,15 +1,16 @@
-#version 410
-layout (location = 0) in vec3 posicion;
+#version 410 core
 
-uniform mat4 mModelViewProj
+layout (location=0) in vec3 posicion;
 
-out salidaVS {
+uniform mat4 mModelViewProj;
+
+out salidaVS{
     vec3 posicionV;
     vec3 normalV;
 } salida;
 
-void main () {
+void main(){
     salida.posicionV = posicion;
-    salida.normalV   = vec3(0.0, 0.0, 1.0); // Normal por defecto por el momento
-    gl_Position      = mModelViewProj * vec4(posicion, 1.0);
+    salida.normalV = vec3(0.0, 0.0, 1.0);
+    gl_Position = mModelViewProj * vec4(posicion, 1.0);
 }
